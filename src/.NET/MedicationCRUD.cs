@@ -28,8 +28,10 @@ namespace fhir_cs_proto
                 // },
                 Code= new CodeableConcept() //código para identificar medicina
                 {
-                    Coding= new List<Coding>(){
-                        new Coding(){
+                    Coding= new List<Coding>()
+                    {
+                        new Coding()
+                        {
                             System= "http://snomed.info/sct",
                             Code= medicationCode,
                             Display= medicationName

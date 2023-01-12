@@ -43,7 +43,12 @@ namespace fhir_cs_proto
             System.Console.WriteLine($"Se han encontrado: {patients.Count} pacientes!");     
             System.Console.WriteLine($"Se han encontrado: {medications.Count} medicinas!");
 
-            System.Console.WriteLine($"el div de medicina contiene: {medications[0].Id} y  {medications[0].Text.Div.ToString()} y {medications[0].Text.Status.ToString()}");
+
+            //Ingreso de recurso de administración de medicación.
+            //MedicationAdministrationCRUD.CreateMedicationAdministration
+            //(fhirClient, medications[0].Id, patients[0].Id, patients[0].Name[0].ToString(), DateTime.Now.ToString(), "1", 7);
+
+            //System.Console.WriteLine($"el div de medicina contiene: {medications[0].Id} y  {medications[0].Text.Div.ToString()} y {medications[0].Text.Status.ToString()}");
             //string firstId= null; //Para guardar el primer id.
             /*
             foreach(Patient patient in patients)
