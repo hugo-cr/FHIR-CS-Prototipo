@@ -9,14 +9,15 @@ namespace fhir_cs_proto
     public static class MedicationAdministrationCRUD
     {
         //Crea un nuevo recurso de tipo administración de medicamento, con el paciente y medicamento consumido.
-        public static void CreateMedicationAdministration(
+        public static MedicationAdministration CreateMedicationAdministration(
             FhirClient fhirClient,
             string medicationId,
             string patientId,
             string patientName,
             string timestamp,
-            string medicationRequest,
-            int ingestedDose
+            //string medicationRequest,
+            int ingestedDoseQuantity,
+            string ingestedDoseUnit
         )
         {
             MedicationAdministration toCreate = new MedicationAdministration()
@@ -26,7 +27,7 @@ namespace fhir_cs_proto
 
                 Medication = new ResourceReference() //medicacion administrada
                 {
-                    Reference = $"#{medicationId}"
+                    Reference = $"Medication/{medicationId}"
                 },
 
                 Subject = new ResourceReference() //paciente al cual se administró
@@ -39,7 +40,8 @@ namespace fhir_cs_proto
                 //     Reference= "Encounter/1",
                 //     Display= "encounter who leads to this prescription"
                 // },
-                Effective = new FhirDateTime(1998,01,30,12,15,0, new TimeSpan()) //timestamp cuando se administró la medicina.
+                //Effective = new FhirDateTime(1998,01,30,12,15,0, new TimeSpan()) //timestamp cuando se administró la medicina.
+                Effective = new FhirDateTime(timestamp)
                 // {
                 //     Value = timestamp
                 // },
@@ -80,10 +82,10 @@ namespace fhir_cs_proto
                     },
                     Dose= new Quantity() //Cantidad de medicamento por dosis (en este caso 7mg)
                     {
-                         Value= ingestedDose,
-                         Unit= "mg",
+                         Value= ingestedDoseQuantity,
+                         Unit= ingestedDoseUnit,
                          System= "http://unitsofmeasure.org",
-                         Code= "mg"
+                         Code= ingestedDoseUnit
                     },
                     Rate= new Quantity() //Cantidad de medicamento por unidad de tiempo (en este caso 4min).
                     {
@@ -95,9 +97,12 @@ namespace fhir_cs_proto
                 } 
             };
             MedicationAdministration created= fhirClient.Create<MedicationAdministration>(toCreate);
-            //string nombre_medicina = MedicationCRUD.ReadMedication(fhirClient, created.Medication);
-            //System.Console.WriteLine($"Creada la administración de medicina {created.Id} de nombre {created.Medication.Reference}");
+            ResourceReference referencia_medicina = (ResourceReference) created.Medication;
+            Medication nombre_medicina = MedicationCRUD.ReadMedication(fhirClient, referencia_medicina.Reference);
+            //System.Console.WriteLine($"Creada la administración de medicina {created.Id} de nombre {nombre_medicina.Code.Coding[0].Display}");
             //System.Console.WriteLine($"Creada la administración de medicina {created.Id} de nombre testing");
+
+            return created;
 
             //System.Console.WriteLine($"Creada la medicina {created.Id} de nombre {created.Code.Coding[0].Display}");
             //System.Console.WriteLine($"Creada la medicina {created.Id} de nombre {created.Code.Coding[0].Display}");
@@ -111,8 +116,82 @@ namespace fhir_cs_proto
             {
                 throw new ArgumentNullException(nameof(id));
             }
-            System.Console.WriteLine($"Borrando la administración de medicamento {id}");
+            //System.Console.WriteLine($"Borrando la administración de medicamento {id}");
             fhirClient.Delete($"MedicationAdministration/{id}");
+        }
+
+        public static MedicationAdministration ReadMedicationAdministration(
+            FhirClient fhirClient,
+            string id)
+        {
+            if(string.IsNullOrEmpty(id))
+            {
+                throw new ArgumentNullException(nameof(id));
+            }
+            return fhirClient.Read<MedicationAdministration>($"MedicationAdministration/{id}");
+        }
+
+        /// <summary>
+        /// Consigue una lista de administraciones de medicación que coincida con los filtros entregados.
+        /// </summary>
+        /// <param name="fhirClient"></param>
+        /// <param name="medicationAdmCriteria"></param>
+        /// <param name="maxMedicationAdms"></param>
+        /// <returns></returns>
+        public static List<MedicationAdministration> GetMedicationAdministrations(
+            FhirClient fhirClient,
+            string[] medicationAdmCriteria = null,
+            int maxMedicationAdms = 12 //Máximo de búsqueda.
+        ){
+            List<MedicationAdministration> medicationAdms = new List<MedicationAdministration>();
+            Bundle medicationAdmBundle;
+
+            if(medicationAdmCriteria == null || (medicationAdmCriteria.Length == 0))
+            {
+                medicationAdmBundle = fhirClient.Search<MedicationAdministration>(); //query REST de búsqueda por medicaciones  defecto
+            }
+            else
+            {
+                medicationAdmBundle = fhirClient.Search<Medication>(medicationAdmCriteria); //query REST de búsqueda por pacientes con nombre "test"
+            }
+
+            while(medicationAdmBundle != null)
+            {
+                //System.Console.WriteLine($"Total: {medicationAdmBundle.Total} Entry count: {medicationAdmBundle.Entry.Count}");
+
+                foreach(Bundle.EntryComponent entry in medicationAdmBundle.Entry)
+                {
+                    if(entry.Resource != null) //Validación que recurso en bundle no sea nulo.
+                    {
+                        MedicationAdministration medicationAdm = (MedicationAdministration)entry.Resource;
+
+                        medicationAdms.Add(medicationAdm);
+
+                        
+                        //System.Console.WriteLine($"- Entry: {medicationAdms.Count, 3} {entry.FullUrl}");
+                        //System.Console.WriteLine($" -     IdMedicina: {medicationAdm.Id,20}");
+
+                        // if(medicationAdm.Code.Coding.Count > 0 ) //Si hay códigos en la lista de códigos
+                        // {
+                        //     System.Console.WriteLine($" - NombreMedicina: {medication.Code.Coding[0].Display.ToString()}");
+                        // }
+                        
+                    }
+
+                    if(medicationAdms.Count >= maxMedicationAdms)
+                    {
+                        break;
+                    }
+                }
+
+                if(medicationAdms.Count >= maxMedicationAdms)
+                {
+                    break;
+                }
+                //Obtener más resultados (paginación del Bundle)
+                medicationAdmBundle= fhirClient.Continue(medicationAdmBundle);
+            }
+            return medicationAdms;
         }
     }
 
